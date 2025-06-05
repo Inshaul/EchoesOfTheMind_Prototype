@@ -18,7 +18,9 @@ public class PlayerColliderResizer : MonoBehaviour
         if (cameraTransform == null || capsule == null) return;
 
         // Get local height of head from rig
-        float headHeight = Mathf.Clamp(cameraTransform.localPosition.y, 1f, 2f);
+        // float headHeight = Mathf.Clamp(cameraTransform.localPosition.y, 1f, 2f);
+        float headHeight = Mathf.Max(cameraTransform.localPosition.y, 1f);
+
         capsule.height = headHeight;
 
         // Center the capsule to match player height
