@@ -8,6 +8,9 @@ public class GhostAIController : MonoBehaviour
     public enum GhostState { HuntStart, Patrolling, ChasingPlayer, HearingPlayer }
     public GhostState currentState = GhostState.HuntStart;
 
+    public Transform eyePoint;
+
+
     private NavMeshAgent agent;
     private Transform player;
 
@@ -87,12 +90,18 @@ public class GhostAIController : MonoBehaviour
 
     void DetectPlayerBySight()
     {
-        Vector3 directionToPlayer = player.position - transform.position;
+        if (player == null || eyePoint == null) return;
+
+        // Target the player's chest/head
+        Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
+
+        // Direction from ghost's eyes to player
+        Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
         float angle = Vector3.Angle(transform.forward, directionToPlayer);
 
         if (directionToPlayer.magnitude < visionRange && angle < fieldOfView / 2f)
         {
-            Ray ray = new Ray(transform.position + Vector3.up * 1.5f, directionToPlayer.normalized);
+            Ray ray = new Ray(eyePoint.position, directionToPlayer.normalized);
             if (Physics.Raycast(ray, out RaycastHit hit, visionRange))
             {
                 if (hit.transform.CompareTag("Player"))
@@ -103,6 +112,7 @@ public class GhostAIController : MonoBehaviour
             }
         }
     }
+
 
     void DetectMicInput()
     {
