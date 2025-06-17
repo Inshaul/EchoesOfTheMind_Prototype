@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class ScreamDetector : MonoBehaviour
@@ -11,13 +10,15 @@ public class ScreamDetector : MonoBehaviour
     private AudioClip micClip;
     private float nextCheckTime;
 
-    public AudioSource audioSource;      
-    public AudioClip jumpscareClip;      
+    public AudioSource audioSource;
+    public AudioClip jumpscareClip;
 
-    public EndSequenceManager screenFader; 
+    public EndSequenceManager screenFader;
 
     public AudioSource bgMusicSource;
     public float musicFadeOutDuration = 1.5f;
+
+    private float micLoudness = 0f; // ⬅️ New field to store loudness
 
     void Start()
     {
@@ -38,10 +39,10 @@ public class ScreamDetector : MonoBehaviour
         if (Time.time >= nextCheckTime)
         {
             nextCheckTime = Time.time + checkInterval;
-            float volume = GetMicVolume();
-            Debug.Log("Mic Volume: " + volume.ToString("F3"));
+            micLoudness = GetMicVolume(); // ⬅️ Store the volume for other scripts
+            Debug.Log("Mic Volume: " + micLoudness.ToString("F3"));
 
-            if (volume > screamThreshold)
+            if (micLoudness > screamThreshold)
             {
                 OnScreamDetected();
             }
@@ -66,50 +67,53 @@ public class ScreamDetector : MonoBehaviour
         return Mathf.Sqrt(sum / samples.Length); // RMS volume
     }
 
-void OnScreamDetected()
-{
-    if (bgMusicSource != null)
-        StartCoroutine(FadeOutMusic());
-
-
-    if (audioSource && jumpscareClip)
+    void OnScreamDetected()
     {
-        audioSource.PlayOneShot(jumpscareClip);
+        if (bgMusicSource != null)
+            StartCoroutine(FadeOutMusic());
+
+        if (audioSource && jumpscareClip)
+        {
+            audioSource.PlayOneShot(jumpscareClip);
+        }
+
+        if (screenFader != null)
+            screenFader.TriggerEndSequence();
+
+        // Delay game over by 1 second
+        StartCoroutine(TriggerGameOverAfterDelay(1f));
     }
 
-    if (screenFader != null)
-        screenFader.TriggerEndSequence();
-
-
-
-    // Delay game over by 1 second
-    StartCoroutine(TriggerGameOverAfterDelay(1f));
-}
-
-IEnumerator FadeOutMusic()
-{
-    float startVolume = bgMusicSource.volume;
-    float time = 0f;
-
-    while (time < musicFadeOutDuration)
+    IEnumerator FadeOutMusic()
     {
-        time += Time.deltaTime;
-        bgMusicSource.volume = Mathf.Lerp(startVolume, 0f, time / musicFadeOutDuration);
-        yield return null;
+        float startVolume = bgMusicSource.volume;
+        float time = 0f;
+
+        while (time < musicFadeOutDuration)
+        {
+            time += Time.deltaTime;
+            bgMusicSource.volume = Mathf.Lerp(startVolume, 0f, time / musicFadeOutDuration);
+            yield return null;
+        }
+
+        bgMusicSource.Stop();
     }
 
-    bgMusicSource.Stop();
-}
+    IEnumerator TriggerGameOverAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
 
-IEnumerator TriggerGameOverAfterDelay(float delay)
-{
-    yield return new WaitForSeconds(delay);
+        Debug.LogWarning("💀 GAME OVER: Scream Triggered");
 
-    Debug.LogWarning("💀 GAME OVER: Scream Triggered");
+        // Example game over: freeze game
+        //Time.timeScale = 0f;
 
-    // Example game over: freeze game
-    //Time.timeScale = 0f;
+        // Or load game over scene: SceneManager.LoadScene("GameOver");
+    }
 
-    // Or load game over scene: SceneManager.LoadScene("GameOver");
-}
+    // ✅ New public method for ghost AI to check mic activity
+    public bool IsPlayerTalking()
+    {
+        return micLoudness > 0.1f; // Adjust based on testing for sensitivity
+    }
 }
