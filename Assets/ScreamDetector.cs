@@ -40,7 +40,7 @@ public class ScreamDetector : MonoBehaviour
         {
             nextCheckTime = Time.time + checkInterval;
             micLoudness = GetMicVolume(); // ⬅️ Store the volume for other scripts
-            Debug.Log("Mic Volume: " + micLoudness.ToString("F3"));
+            // Debug.Log("Mic Volume: " + micLoudness.ToString("F3"));
 
             if (micLoudness > screamThreshold)
             {

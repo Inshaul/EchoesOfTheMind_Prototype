@@ -22,6 +22,7 @@ public class GhostAIController : MonoBehaviour
     [Header("Vision Settings")]
     public float visionRange = 12f;
     public float fieldOfView = 60f;
+    public float verticalFieldOfView = 45f;
 
     [Header("Mic Detection")]
     public ScreamDetector screamDetector; // Drag reference in Inspector
@@ -88,30 +89,109 @@ public class GhostAIController : MonoBehaviour
         }
     }
 
+    // void DetectPlayerBySight()
+    // {
+    //     if (player == null || eyePoint == null) return;
+
+    //     // Target the player's chest/head
+    //     Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
+
+    //     // Direction from ghost's eyes to player
+    //     Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
+    //     float angle = Vector3.Angle(transform.forward, directionToPlayer);
+
+    //     if (directionToPlayer.magnitude < visionRange && angle < fieldOfView / 2f)
+    //     {
+    //         Ray ray = new Ray(eyePoint.position, directionToPlayer.normalized);
+    //         if (Physics.Raycast(ray, out RaycastHit hit, visionRange))
+    //         {
+    //             if (hit.transform.CompareTag("Player"))
+    //             {
+    //                 currentState = GhostState.ChasingPlayer;
+    //                 Debug.Log("👁️ Ghost sees the player!");
+    //             }
+    //         }
+    //     }
+    // }
+
+    // void DetectPlayerBySight()
+    // {
+    //     if (player == null || eyePoint == null) return;
+
+    //     // Target chest/head area of player
+    //     Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
+
+    //     // Calculate direction and distance
+    //     Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
+    //     float distanceToPlayer = directionToPlayer.magnitude;
+    //     float angle = Vector3.Angle(eyePoint.forward, directionToPlayer);
+
+    //     // Draw field of view cone (debug)
+    //     Debug.DrawRay(eyePoint.position, eyePoint.forward * visionRange, Color.green); // center line
+    //     Debug.DrawRay(eyePoint.position, Quaternion.Euler(0, fieldOfView / 2, 0) * eyePoint.forward * visionRange, Color.yellow);
+    //     Debug.DrawRay(eyePoint.position, Quaternion.Euler(0, -fieldOfView / 2, 0) * eyePoint.forward * visionRange, Color.yellow);
+
+    //     // Check if player is within range and angle
+    //     if (distanceToPlayer < visionRange && angle < fieldOfView / 2f)
+    //     {
+    //         // Perform raycast to see if ghost has line-of-sight
+    //         Ray ray = new Ray(eyePoint.position, directionToPlayer.normalized);
+    //         if (Physics.Raycast(ray, out RaycastHit hit, visionRange))
+    //         {
+    //             //Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.red); // show hit line
+    //             //Debug.DrawRay(ray.origin, ray.direction * 100f, Color.magenta);
+    //             if (hit.transform.root.name != "Asylum")
+    //             {
+    //                 Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.red); // show hit line
+    //                 Debug.Log("hit name: " + hit.transform.name + " | tag: " + hit.transform.tag + " | root: " + hit.transform.root.name);
+    //             }
+    //             if (hit.transform.root.CompareTag("Player"))
+    //             {
+    //                 Debug.Log("👁️ Ghost sees the player!");
+    //                 currentState = GhostState.ChasingPlayer;
+    //             }
+    //         }
+    //     }
+    // }
+
+
     void DetectPlayerBySight()
     {
         if (player == null || eyePoint == null) return;
 
-        // Target the player's chest/head
-        Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
-
-        // Direction from ghost's eyes to player
+        Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f; // chest/head level
         Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
-        float angle = Vector3.Angle(transform.forward, directionToPlayer);
+        float distanceToPlayer = directionToPlayer.magnitude;
 
-        if (directionToPlayer.magnitude < visionRange && angle < fieldOfView / 2f)
+        if (distanceToPlayer > visionRange) return;
+
+        // 🔵 3D angle between ghost forward and direction to player (no projection)
+        float angleToPlayer = Vector3.Angle(eyePoint.forward, directionToPlayer.normalized);
+
+        // 💡 Visual debug lines
+        Debug.DrawRay(eyePoint.position, eyePoint.forward * visionRange, Color.green); // forward
+        Debug.DrawRay(eyePoint.position, directionToPlayer.normalized * visionRange, Color.magenta); // toward player
+
+        if (angleToPlayer < fieldOfView / 2f)
         {
-            Ray ray = new Ray(eyePoint.position, directionToPlayer.normalized);
-            if (Physics.Raycast(ray, out RaycastHit hit, visionRange))
+            if (Physics.Raycast(eyePoint.position, directionToPlayer.normalized, out RaycastHit hit, visionRange))
             {
-                if (hit.transform.CompareTag("Player"))
+                Debug.DrawRay(eyePoint.position, directionToPlayer.normalized * hit.distance, Color.red); // hit line
+
+                Debug.Log($"Ray hit: {hit.transform.name} | Tag: {hit.transform.tag}");
+
+                // Check if we hit player or any object under player root
+                if (hit.transform.CompareTag("Player") || hit.transform.root.CompareTag("Player"))
                 {
-                    currentState = GhostState.ChasingPlayer;
                     Debug.Log("👁️ Ghost sees the player!");
+                    currentState = GhostState.ChasingPlayer;
                 }
             }
         }
     }
+
+
+
 
 
     void DetectMicInput()
@@ -125,6 +205,7 @@ public class GhostAIController : MonoBehaviour
 
     void ChasePlayer()
     {
+        Debug.Log("🚨 Ghost is chasing the player!");
         agent.SetDestination(player.position);
 
         float distance = Vector3.Distance(transform.position, player.position);
