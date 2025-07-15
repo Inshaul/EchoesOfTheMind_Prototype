@@ -27,6 +27,21 @@ public class GhostAIController : MonoBehaviour
     [Header("Mic Detection")]
     public ScreamDetector screamDetector; // Drag reference in Inspector
 
+    [Header("Blinking Settings")]
+    public float minBlinkTime = 1f;
+    public float maxBlinkTime = 2f;
+    public SkinnedMeshRenderer ghostRenderer;
+
+    [Header("Teleport Settings")]
+    public bool allowTeleportation = true;
+    public float teleportCooldown = 20f;
+    private float nextTeleportTime = 0f;
+    public float teleportDistanceFromPlayer = 10f;
+
+    private Vector3 lastPosition;
+    private float stuckTimer = 0f; 
+
+
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -41,6 +56,7 @@ public class GhostAIController : MonoBehaviour
 
         // Delay hunt start slightly
         Invoke(nameof(StartPatrolling), 2f);
+        StartCoroutine(BlinkRoutine());
     }
 
     void Update()
@@ -61,6 +77,8 @@ public class GhostAIController : MonoBehaviour
                 MoveTowardPlayerSound();
                 break;
         }
+
+        //CheckIfStuck();
     }
 
     void StartPatrolling()
@@ -87,6 +105,87 @@ public class GhostAIController : MonoBehaviour
             agent.SetDestination(hit.position);
             nextRoamTime = Time.time + roamDelay;
         }
+    }
+
+    // IEnumerator BlinkRoutine()
+    // {
+    //     while (true)
+    //     {
+    //         yield return new WaitForSeconds(Random.Range(minBlinkTime, maxBlinkTime));
+
+    //         // Fade out
+    //         SetGhostAlpha(0f);
+    //         yield return new WaitForSeconds(2f); // Invisible duration
+
+    //         // Fade in
+    //         SetGhostAlpha(1f);
+    //     }
+    // }
+
+    IEnumerator BlinkRoutine()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(Random.Range(minBlinkTime, maxBlinkTime));
+
+            if (ghostRenderer != null)
+            {
+                ghostRenderer.enabled = false;
+                yield return new WaitForSeconds(0.5f); // Blink duration
+                ghostRenderer.enabled = true;
+            }
+        }
+    }
+
+    void SetGhostAlpha(float alpha)
+    {
+        if (ghostRenderer != null && ghostRenderer.material.HasProperty("_Color"))
+        {
+            Color color = ghostRenderer.material.color;
+            color.a = alpha;
+            ghostRenderer.material.color = color;
+        }
+    }
+
+
+    void TryTeleport()
+    {
+        if (!allowTeleportation || Time.time < nextTeleportTime || player == null) return;
+
+        Vector3 randomOffset = Random.onUnitSphere;
+        randomOffset.y = 0; // Keep on ground
+        randomOffset = randomOffset.normalized * teleportDistanceFromPlayer;
+
+        Vector3 newPos = player.position + randomOffset;
+
+        if (NavMesh.SamplePosition(newPos, out NavMeshHit hit, 5f, NavMesh.AllAreas))
+        {
+            transform.position = hit.position;
+            nextTeleportTime = Time.time + teleportCooldown;
+            Debug.Log("👻 Ghost teleported!");
+        }
+    }
+
+    void CheckIfStuck()
+    {
+        float movedDistance = Vector3.Distance(transform.position, lastPosition);
+
+        if (movedDistance < 0.05f) // not moving
+        {
+            stuckTimer += Time.deltaTime;
+            if (stuckTimer > 3f) // stuck for 3 seconds
+            {
+                Debug.LogWarning("🚧 Ghost seems stuck, teleporting to new location.");
+                Roam(); // Force new destination
+                stuckTimer = 0f;
+            }
+        }
+        else
+        {
+            stuckTimer = 0f; // Reset if moving
+        }
+
+        lastPosition = transform.position;
     }
 
     // void DetectPlayerBySight()
