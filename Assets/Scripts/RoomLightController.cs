@@ -11,71 +11,66 @@ public class RoomLightController : MonoBehaviour
     public List<Light> lights;
 
     [Header("Effect References (Optional)")]
-    public List<ParticleSystem> fireEffects;
+    public List<ParticleSystem> fireParticles;
 
     private bool isFlickering = false;
 
-    // Turn ON lights and particles
     public void TurnOn()
     {
         foreach (var light in lights)
-            light.enabled = true;
+            if (light != null) light.enabled = true;
 
-        foreach (var ps in fireEffects)
-            if (!ps.isPlaying) ps.Play();
+        foreach (var ps in fireParticles)
+            if (ps != null && !ps.isPlaying) ps.Play();
     }
 
-    // Turn OFF lights and particles
     public void TurnOff()
     {
         foreach (var light in lights)
-            light.enabled = false;
+            if (light != null) light.enabled = false;
 
-        foreach (var ps in fireEffects)
-            if (ps.isPlaying) ps.Stop();
+        foreach (var ps in fireParticles)
+            if (ps != null && ps.isPlaying) ps.Stop();
     }
 
-    // Set light color
     public void SetLightColor(Color color)
     {
         foreach (var light in lights)
-            light.color = color;
+            if (light != null) light.color = color;
     }
 
-    // Start flickering lights
-    public void StartFlicker(float duration = 2f, float interval = 0.2f)
-    {
-        if (!isFlickering)
-            StartCoroutine(FlickerRoutine(duration, interval));
-    }
-
-    private IEnumerator FlickerRoutine(float duration, float interval)
-    {
-        isFlickering = true;
-        float endTime = Time.time + duration;
-
-        while (Time.time < endTime)
-        {
-            foreach (var light in lights)
-                light.enabled = !light.enabled;
-
-            yield return new WaitForSeconds(interval);
-        }
-
-        TurnOn(); // Restore lights and particles
-        isFlickering = false;
-    }
-
-    // Optional: Activate fire effects only (e.g., for Hell room)
     public void ActivateFire()
     {
-        foreach (var ps in fireEffects)
-            if (!ps.isPlaying) ps.Play();
+        foreach (var ps in fireParticles)
+            if (ps != null && !ps.isPlaying) ps.Play();
     }
 
     public void DeactivateFire()
     {
-        foreach (var ps in fireEffects)
-            if (ps.isPlaying) ps.Stop();
+        foreach (var ps in fireParticles)
+            if (ps != null && ps.isPlaying) ps.Stop();
+    }
+
+    public void StartFlicker(float duration, float interval)
+    {
+        StopAllCoroutines();
+        StartCoroutine(Flicker(duration, interval));
+    }
+
+    IEnumerator Flicker(float duration, float interval)
+    {
+        float timer = 0f;
+        bool on = false;
+        while (timer < duration)
+        {
+            on = !on;
+            foreach (var light in lights)
+                if (light != null) light.enabled = on;
+            timer += interval;
+            yield return new WaitForSeconds(interval);
+        }
+        // Ensure lights are on after flicker
+        foreach (var light in lights)
+            if (light != null) light.enabled = true;
     }
 }
